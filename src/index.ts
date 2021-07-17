@@ -8,6 +8,7 @@ import * as mongoose from 'mongoose';
 /* ------ Constants Imports ------ */
 import { dbURI } from './utils/constants';
 import { registerUser, getAllUsers } from './controllers/userController'
+import { newBooking, getBookings} from './controllers/bookingController'
 
 /* ------ Declaration Of Global Variable ------ */
 const dbUri = dbURI;
@@ -34,6 +35,8 @@ class App {
     public routes(): void {
         this.express.post('/user/register', registerUser);
         this.express.get('/users', getAllUsers);
+        this.express.post('/booking', newBooking);
+        this.express.get('/bookings', getBookings);
     }
 
     public async launchConf() {

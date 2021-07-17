@@ -1,4 +1,8 @@
-import { Request, Response, Next } from 'express';
+import {
+    Request,
+    Response,
+    Next
+} from 'express';
 import UserDetails from '../models/userSchema';
 import * as uuid from 'uuid';
 
@@ -14,7 +18,10 @@ export const registerUser = async (req: Request, res: Response) => {
             differentlyAbled: data.differentlyAbled ? data.differentlyAbled : false,
             pregnantWomen: data.pregnantWomen ? data.pregnantWomen : false
         }
-        let userDetail: any = await UserDetails.findOne({ phone: data.phone, email: data.email });
+        let userDetail: any = await UserDetails.findOne({
+            phone: data.phone,
+            email: data.email
+        });
         if (userDetail) {
             res.statusCode = 200;
             res.json({
