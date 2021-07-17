@@ -1,0 +1,27 @@
+{
+  "name": "parking-lot",
+  "version": "1.0.0",
+  "description": "jio tesseract",
+  "main": "src/index",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon --exec ts-node -- src/index.ts"
+  },
+  "author": "Md Imran",
+  "license": "ISC",
+  "dependencies": {
+    "@types/mongodb": "^3.6.20",
+    "@types/node": "^15.14.2",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "mongoose": "^5.13.3",
+    "ts-node": "^10.1.0",
+    "typescript": "^4.3.5",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.12",
+    "rimraf": "^3.0.2"
+  }
+}

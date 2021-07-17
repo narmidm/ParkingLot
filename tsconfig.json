@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "target": "es6",
+    "lib": [
+      "es2016",
+      "dom",
+      "esnext.asynciterable",
+      "esnext",
+      "es6"
+    ],
+    "sourceMap": false,
+    "outDir": "build",
+    "allowJs": true, 
+    "types": [
+      "node"
+    ],
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/*.ts",
+    "example/*.ts",
+    "test/*.ts"
+  ]
+}
