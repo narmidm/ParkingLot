@@ -22,15 +22,7 @@ const slotsDetailsSchema = new Schema({
     reservedAvailableSlots: {
         type: Number,
         required: true
-    },
-    nextReservedAvailableSlots: {
-        type: Number,
-        required: true
-    },
-    nextGeneralAvailableSlots: {
-        type: Number,
-        required: true
-    },
+    }
 });
 
 export default mongoose.model('SlotsDetails', slotsDetailsSchema);

@@ -6,7 +6,7 @@ import {
 import UserDetails from '../models/userSchema';
 import * as uuid from 'uuid';
 
-export const registerUser = async (req: Request, res: Response) => {
+export const registerUser = async (req: Request, res: Response, next: Next) => {
     try {
         let data = req.body;
         let user = {
@@ -23,10 +23,11 @@ export const registerUser = async (req: Request, res: Response) => {
             email: data.email
         });
         if (userDetail) {
-            res.statusCode = 200;
+            res.statusCode = 403;
             res.json({
                 Response: 'user already registered'
             })
+            return next();
         } else {
             let userInfo = new UserDetails(user);
             userDetail = await userInfo.save();
@@ -37,6 +38,7 @@ export const registerUser = async (req: Request, res: Response) => {
                     id: userDetail._id
                 }
             })
+            return next();
         }
     } catch (err) {
         res.statusCode = 500;
@@ -46,10 +48,11 @@ export const registerUser = async (req: Request, res: Response) => {
                 error: err
             }
         })
+        return next();
     }
 };
 
-export const getAllUsers = async (req: Request, res: Response) => {
+export const getAllUsers = async (req: Request, res: Response, next: Next) => {
     try {
         let userDetail: any = await UserDetails.find();
         if (!userDetail) {
@@ -57,6 +60,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
             res.json({
                 Response: 'no user found'
             })
+            return next();
         } else {
             res.statusCode = 200;
             res.json({
@@ -65,6 +69,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
                     data: userDetail
                 }
             })
+            return next();
         }
     } catch (err) {
         res.statusCode = 500;
@@ -74,5 +79,6 @@ export const getAllUsers = async (req: Request, res: Response) => {
                 error: err
             }
         })
+        return next();
     }
 }

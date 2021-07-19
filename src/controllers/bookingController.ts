@@ -5,9 +5,14 @@ import {
 } from 'express';
 import * as uuid from 'uuid';
 import * as moment from 'moment';
+import * as fs from 'fs';
 import UserDetails from '../models/userSchema';
 import SlotsDetails from '../models/slotsSchema';
 import BookingDetails from '../models/bookingSchema';
+import ParkingSlotsSchema from '../models/parkingSlotsSchema';
+import {
+    filePath
+} from '../utils/constants';
 
 export const newBooking = async (req: Request, res: Response, next: Next) => {
     try {
@@ -20,8 +25,6 @@ export const newBooking = async (req: Request, res: Response, next: Next) => {
         let generalAvailableSlots;
         let reservedBookedSlots;
         let reservedAvailableSlots;
-        let nextReservedAvailableSlots;
-        let nextGeneralAvailableSlots;
 
         let userDetail: any = await UserDetails.findOne({
             _id: data.userId
@@ -49,12 +52,9 @@ export const newBooking = async (req: Request, res: Response, next: Next) => {
             }
             if (type === 'GENERAL') {
                 if (slotDetails.generalAvailableSlots > 0) {
-                    slotNumber = slotDetails.nextGeneralAvailableSlots;
+                    slotNumber = await getNextGeneralSlot();
                     generalBookedSlots = slotDetails.generalBookedSlots + 1;
                     generalAvailableSlots = slotDetails.generalAvailableSlots - 1;
-                    if (slotDetails.nextGeneralAvailableSlots < 96) {
-                        nextGeneralAvailableSlots = slotDetails.nextGeneralAvailableSlots + 1
-                    }
                 } else {
                     res.statusCode = 200;
                     res.json({
@@ -66,19 +66,13 @@ export const newBooking = async (req: Request, res: Response, next: Next) => {
                 }
             } else if (type === 'RESERVED') {
                 if (slotDetails.reservedAvailableSlots > 0) {
-                    slotNumber = slotDetails.nextReservedAvailableSlots;
+                    slotNumber = await getNextReservedSlot();
                     reservedBookedSlots = slotDetails.reservedBookedSlots + 1;
                     reservedAvailableSlots = slotDetails.reservedAvailableSlots - 1;
-                    if (slotDetails.nextReservedAvailableSlots < 24) {
-                        nextReservedAvailableSlots = slotDetails.nextReservedAvailableSlots + 1
-                    }
                 } else if (slotDetails.generalAvailableSlots > 0) {
-                    slotNumber = slotDetails.nextGeneralAvailableSlots;
+                    slotNumber = await getNextGeneralSlot();
                     generalBookedSlots = slotDetails.generalBookedSlots + 1;
                     generalAvailableSlots = slotDetails.generalAvailableSlots - 1;
-                    if (slotDetails.nextGeneralAvailableSlots < 96) {
-                        nextGeneralAvailableSlots = slotDetails.nextGeneralAvailableSlots + 1
-                    }
                 } else {
                     res.statusCode = 200;
                     res.json({
@@ -101,14 +95,17 @@ export const newBooking = async (req: Request, res: Response, next: Next) => {
                 generalBookedSlots: generalBookedSlots >= 0 ? generalBookedSlots : slotDetails.generalBookedSlots,
                 generalAvailableSlots: generalAvailableSlots >= 0 ? generalAvailableSlots : slotDetails.generalAvailableSlots,
                 reservedBookedSlots: reservedBookedSlots >= 0 ? reservedBookedSlots : slotDetails.reservedBookedSlots,
-                reservedAvailableSlots: reservedAvailableSlots >= 0 ? reservedAvailableSlots : slotDetails.reservedAvailableSlots,
-                nextReservedAvailableSlots: nextReservedAvailableSlots >= 0 ? nextReservedAvailableSlots : slotDetails.nextReservedAvailableSlots,
-                nextGeneralAvailableSlots: nextGeneralAvailableSlots >= 0 ? nextGeneralAvailableSlots : slotDetails.nextGeneralAvailableSlots
+                reservedAvailableSlots: reservedAvailableSlots >= 0 ? reservedAvailableSlots : slotDetails.reservedAvailableSlots
             };
             await SlotsDetails.updateOne({
                 _id: slotDetails._id
             }, slots);
 
+            await ParkingSlotsSchema.updateOne({
+                slotNumber: slotNumber
+            }, {
+                available: false
+            })
 
             let booking = {
                 _id: uuid.v4(),
@@ -124,6 +121,7 @@ export const newBooking = async (req: Request, res: Response, next: Next) => {
                 status: 'OPEN'
             }
             await new BookingDetails(booking).save();
+            await saveDataOnFile(booking);
             res.statusCode = 200;
             res.json({
                 Response: {
@@ -131,8 +129,8 @@ export const newBooking = async (req: Request, res: Response, next: Next) => {
                     data: {
                         bookingId: booking._id,
                         vehicleNumber: booking.vehicleNumber,
-                        startTime: booking.startTime,
-                        waitingTime: booking.waitingTime,
+                        startTime: booking.startTime.toString(),
+                        waitingTime: booking.waitingTime.toString(),
                         slotNumber: booking.slotNumber
                     }
                 }
@@ -162,8 +160,13 @@ export const newBooking = async (req: Request, res: Response, next: Next) => {
 export const getBookings = async (req: Request, res: Response, next: Next) => {
     try {
         let bookingDetail: any = await BookingDetails.find({
-            $or: [{status: 'OPEN'},
-            {status: 'ACTIVE'}]
+            $or: [{
+                status: 'OPEN'
+            },
+            {
+                status: 'ACTIVE'
+            }
+            ]
         });
         if (!bookingDetail) {
             res.statusCode = 404;
@@ -190,5 +193,42 @@ export const getBookings = async (req: Request, res: Response, next: Next) => {
             }
         })
         return next();
+    }
+}
+
+const saveDataOnFile = async (booking) => {
+    let obj = {
+        _id: booking._id,
+        waitingTime: booking.waitingTime.toString(),
+        status: booking.status
+    }
+    let data = fs.existsSync(filePath + "storage.json") ?
+        JSON.parse(fs.readFileSync(filePath + "storage.json", "utf8")) :
+        fs.appendFileSync(filePath + "storage.json", JSON.stringify([obj]));
+    if (data) {
+        data.push(obj);
+        fs.writeFileSync(filePath + "storage.json", JSON.stringify(data, null, 2));
+    } else {
+        console.log('no data found');
+    }
+}
+
+const getNextReservedSlot = async () => {
+    let parkingSlot: any = await ParkingSlotsSchema.findOne({
+        type: 'RESERVED',
+        available: true
+    });
+    if (parkingSlot) {
+        return parkingSlot.slotNumber;
+    }
+}
+
+const getNextGeneralSlot = async () => {
+    let parkingSlot: any = await ParkingSlotsSchema.findOne({
+        type: 'GENERAL',
+        available: true
+    });
+    if (parkingSlot) {
+        return parkingSlot.slotNumber;
     }
 }
